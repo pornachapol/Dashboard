@@ -1,68 +1,71 @@
 
-import React from 'react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, LabelList } from 'recharts';
+import streamlit as st
+import pandas as pd
+import altair as alt
 
-const FinancialDashboard = () => {
-  const data = [
-    { year: '2025', revenue: 2.4, cost: 6.5, profit: -4.1, devCost: 5.5, marketing: 1, operations: 0.5, other: 0, restaurants: 100 },
-    { year: '2026', revenue: 12, cost: 4, profit: 8, devCost: 0, marketing: 2, operations: 1, other: 1, restaurants: 500 },
-    { year: '2027', revenue: 36, cost: 5, profit: 31, devCost: 0, marketing: 3, operations: 1.5, other: 0.5, restaurants: 1500 }
-  ];
+# ข้อมูลหลัก
+data = pd.DataFrame([
+    {"year": "2025", "revenue": 2.4, "cost": 6.5, "profit": -4.1},
+    {"year": "2026", "revenue": 12, "cost": 4, "profit": 8},
+    {"year": "2027", "revenue": 36, "cost": 5, "profit": 31}
+])
 
-  let cumulativeProfit = 0;
-  let cumulativeCost = 0;
-  const roiData = data.map((item, index) => {
-    const annualProfit = item.profit;
-    const annualCost = item.cost;
+# คำนวณ ROI รายปี และสะสม
+data["roi"] = (data["profit"] / data["cost"] * 100).round(1)
+data["cumulative_profit"] = data["profit"].cumsum()
+data["cumulative_cost"] = data["cost"].cumsum()
+data["cumulative_roi"] = (data["cumulative_profit"] / data["cumulative_cost"] * 100).round(1)
 
-    cumulativeProfit += annualProfit;
-    cumulativeCost += annualCost;
+# คำนวณ Break-even Point
+def calculate_break_even_month(data):
+    cum_profit = data["cumulative_profit"].tolist()
+    for i in range(1, len(cum_profit)):
+        if cum_profit[i] >= 0:
+            prev = cum_profit[i-1]
+            curr = cum_profit[i]
+            ratio = abs(prev) / (curr - prev)
+            return int((i-1)*12 + ratio*12)
+    return "Not within 3 years"
 
-    return {
-      year: item.year,
-      roi: +(annualProfit / annualCost * 100).toFixed(1),
-      cumulativeRoi: +(cumulativeProfit / cumulativeCost * 100).toFixed(1)
-    };
-  });
+break_even_months = calculate_break_even_month(data)
+break_even_years = round(break_even_months/12, 1) if isinstance(break_even_months, (int, float)) else break_even_months
 
-  const costBreakdownData = [
-    { name: 'Dev Cost', 2025: 5.5, 2026: 0, 2027: 0 },
-    { name: 'Marketing & Sales', 2025: 1, 2026: 2, 2027: 3 },
-    { name: 'Operations', 2025: 0.5, 2026: 1, 2027: 1.5 },
-    { name: 'Other', 2025: 0, 2026: 1, 2027: 0.5 }
-  ];
+# UI Start
+st.title("📊 Financial ROI Dashboard (2025–2027)")
 
-  let cumulativeProfitForBreakEven = 0;
-  const breakEvenData = data.map(item => {
-    cumulativeProfitForBreakEven += item.profit;
-    return {
-      year: item.year,
-      cumulativeProfit: parseFloat(cumulativeProfitForBreakEven.toFixed(1))
-    };
-  });
+col1, col2, col3 = st.columns(3)
+col1.metric("Initial Investment", "5.5 MB")
+col2.metric("Break-even Point", f"{break_even_months} months", f"≈ {break_even_years} yrs")
+col3.metric("3-Year ROI", f"{data['cumulative_roi'].iloc[-1]}%")
 
-  const calculateBreakEvenMonth = () => {
-    if (breakEvenData[0].cumulativeProfit >= 0) return 0;
-    for (let i = 1; i < breakEvenData.length; i++) {
-      if (breakEvenData[i].cumulativeProfit >= 0) {
-        const prevYear = breakEvenData[i-1];
-        const currYear = breakEvenData[i];
-        const profitDiff = currYear.cumulativeProfit - prevYear.cumulativeProfit;
-        const negativeProfitPortion = Math.abs(prevYear.cumulativeProfit) / profitDiff;
-        return 12 * (i-1) + Math.ceil(negativeProfitPortion * 12);
-      }
-    }
-    return "Not within 3 years";
-  };
+st.subheader("📈 Revenue, Cost & Profit (MB)")
+line = alt.Chart(data).transform_fold(
+    ["revenue", "cost", "profit"],
+    as_=["Metric", "Value"]
+).mark_line(point=True).encode(
+    x="year",
+    y="Value:Q",
+    color="Metric:N"
+).properties(height=300)
+st.altair_chart(line, use_container_width=True)
 
-  const breakEvenMonth = calculateBreakEvenMonth();
+st.subheader("💹 Annual & Cumulative ROI (%)")
+roi_chart = alt.Chart(data).transform_fold(
+    ["roi", "cumulative_roi"],
+    as_=["Metric", "Value"]
+).mark_line(point=True).encode(
+    x="year",
+    y="Value:Q",
+    color="Metric:N"
+).properties(height=300)
+st.altair_chart(roi_chart, use_container_width=True)
 
-  return (
-    <div className="bg-black p-4 rounded-lg text-purple-200">
-      <h1 className="text-2xl font-bold text-center mb-6 text-purple-300">Financial ROI Analysis 2025-2027</h1>
-      {/* Remaining JSX layout and charts remain unchanged */}
-    </div>
-  );
-};
+st.subheader("📊 Cumulative Profit for Break-even Analysis")
+cum_profit_chart = alt.Chart(data).mark_line(point=True).encode(
+    x="year",
+    y="cumulative_profit",
+    tooltip=["year", "cumulative_profit"]
+).properties(height=300)
+st.altair_chart(cum_profit_chart, use_container_width=True)
 
-export default FinancialDashboard;
+st.caption("Dashboard by ChatGPT | Based on 5.5MB Dev Cost Investment")
