@@ -16,7 +16,7 @@ data["cumulative_profit"] = data["profit"].cumsum()
 data["cumulative_cost"] = data["cost"].cumsum()
 data["cumulative_roi"] = (data["cumulative_profit"] / data["cumulative_cost"] * 100).round(1)
 
-# คำนวณ Break-even Point
+# คำนวณ Break-even Point (ทศนิยม)
 def calculate_break_even_month(data):
     cum_profit = data["cumulative_profit"].tolist()
     for i in range(1, len(cum_profit)):
@@ -24,7 +24,7 @@ def calculate_break_even_month(data):
             prev = cum_profit[i-1]
             curr = cum_profit[i]
             ratio = abs(prev) / (curr - prev)
-            return int((i-1)*12 + ratio*12)
+            return round((i-1)*12 + ratio*12, 1)
     return "Not within 3 years"
 
 break_even_months = calculate_break_even_month(data)
