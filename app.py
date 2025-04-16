@@ -16,17 +16,18 @@ data["cumulative_profit"] = data["profit"].cumsum()
 data["cumulative_cost"] = data["cost"].cumsum()
 data["cumulative_roi"] = (data["cumulative_profit"] / data["cumulative_cost"] * 100).round(1)
 
-# คำนวณ Break-even Point (นับจากต้นปี 2025)
+# ✅ คำนวณ Break-even Point ที่ถูกต้อง (เริ่มนับจากต้นปี 2025)
 def calculate_break_even_month(data):
-    cumulative = 0
-    for i in range(1, len(data)):
-        prev = cumulative
-        cumulative += data.loc[i - 1, "profit"]
-        curr = cumulative + data.loc[i, "profit"]
-        if curr >= 0:
-            profit_diff = data.loc[i, "profit"]
-            negative_profit_portion = abs(prev) / profit_diff
-            return round((i - 1) * 12 + negative_profit_portion * 12, 1)
+    profits = data["profit"].tolist()
+    cumulative = profits[0]
+    if cumulative >= 0:
+        return 0.0
+    for i in range(1, len(profits)):
+        cumulative += profits[i]
+        if cumulative >= 0:
+            gap = cumulative - profits[i]
+            portion = abs(gap) / profits[i]
+            return round(i * 12 - (portion * 12), 1)
     return "Not within 3 years"
 
 break_even_months = calculate_break_even_month(data)
