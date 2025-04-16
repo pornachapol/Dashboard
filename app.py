@@ -16,19 +16,21 @@ data["cumulative_profit"] = data["profit"].cumsum()
 data["cumulative_cost"] = data["cost"].cumsum()
 data["cumulative_roi"] = (data["cumulative_profit"] / data["cumulative_cost"] * 100).round(1)
 
-# คำนวณ Break-even Point (ทศนิยม)
+# คำนวณ Break-even Point (นับจากต้นปี 2025)
 def calculate_break_even_month(data):
-    cum_profit = data["cumulative_profit"].tolist()
-    for i in range(1, len(cum_profit)):
-        if cum_profit[i] >= 0:
-            prev = cum_profit[i-1]
-            curr = cum_profit[i]
-            ratio = abs(prev) / (curr - prev)
-            return round((i-1)*12 + ratio*12, 1)
+    cumulative = 0
+    for i in range(1, len(data)):
+        prev = cumulative
+        cumulative += data.loc[i - 1, "profit"]
+        curr = cumulative + data.loc[i, "profit"]
+        if curr >= 0:
+            profit_diff = data.loc[i, "profit"]
+            negative_profit_portion = abs(prev) / profit_diff
+            return round((i - 1) * 12 + negative_profit_portion * 12, 1)
     return "Not within 3 years"
 
 break_even_months = calculate_break_even_month(data)
-break_even_years = round(break_even_months/12, 1) if isinstance(break_even_months, (int, float)) else break_even_months
+break_even_years = round(break_even_months / 12, 1) if isinstance(break_even_months, (int, float)) else break_even_months
 
 # UI Start
 st.title("📊 Financial ROI Dashboard (2025–2027)")
